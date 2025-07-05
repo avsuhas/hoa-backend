@@ -1,0 +1,295 @@
+# routes/users.py
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from typing import List, Optional
+from datetime import datetime
+from uuid import UUID
+
+from ..database import get_session
+from ..models import User
+from ..schemas import UserCreate, UserUpdate, UserOut
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.post("/", response_model=UserOut, status_code=201)
+async def create_user(
+    data: UserCreate, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Create a new user"""
+    try:
+        # Check if email already exists
+        existing_user = await session.scalar(
+            select(User).where(User.email == data.email)
+        )
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        new_user = User(**data.dict())
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+        return new_user
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
+
+@router.get("/", response_model=List[UserOut])
+async def list_users(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    role: Optional[str] = Query(None, description="Filter by role"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    email_verified: Optional[bool] = Query(None, description="Filter by email verification status"),
+    search: Optional[str] = Query(None, description="Search by name or email"),
+    session: AsyncSession = Depends(get_session)
+):
+    """Get all users with optional filtering and pagination"""
+    try:
+        query = select(User)
+        
+        if role:
+            query = query.where(User.role == role)
+        if is_active is not None:
+            query = query.where(User.is_active == is_active)
+        if email_verified is not None:
+            query = query.where(User.email_verified == email_verified)
+        if search:
+            query = query.where(
+                (User.first_name.ilike(f"%{search}%")) |
+                (User.last_name.ilike(f"%{search}%")) |
+                (User.email.ilike(f"%{search}%"))
+            )
+        
+        query = query.offset(skip).limit(limit)
+        result = await session.execute(query)
+        return result.scalars().all()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
+
+@router.get("/{user_id}", response_model=UserOut)
+async def get_user(
+    user_id: UUID, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Get a specific user by ID"""
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user: {str(e)}")
+
+@router.put("/{user_id}", response_model=UserOut)
+async def update_user(
+    user_id: UUID, 
+    updates: UserUpdate, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Update a user"""
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        update_data = updates.dict(exclude_unset=True)
+        
+        # Check if email is being updated and if it already exists
+        if 'email' in update_data and update_data['email'] != user.email:
+            existing_user = await session.scalar(
+                select(User).where(User.email == update_data['email'])
+            )
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Email already registered")
+        
+        for key, value in update_data.items():
+            setattr(user, key, value)
+        
+        user.updated_at = datetime.utcnow()
+        await session.commit()
+        await session.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to update user: {str(e)}")
+
+@router.delete("/{user_id}", status_code=204)
+async def delete_user(
+    user_id: UUID, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Delete a user"""
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        await session.delete(user)
+        await session.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to delete user: {str(e)}")
+
+@router.get("/email/{email}", response_model=UserOut)
+async def get_user_by_email(
+    email: str, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Get a user by email address"""
+    try:
+        user = await session.scalar(select(User).where(User.email == email))
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user: {str(e)}")
+
+@router.get("/role/{role}", response_model=List[UserOut])
+async def get_users_by_role(
+    role: str,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    session: AsyncSession = Depends(get_session)
+):
+    """Get all users with a specific role"""
+    try:
+        query = select(User).where(User.role == role).offset(skip).limit(limit)
+        result = await session.execute(query)
+        return result.scalars().all()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
+
+@router.put("/{user_id}/verify-email", response_model=UserOut)
+async def verify_user_email(
+    user_id: UUID, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Mark a user's email as verified"""
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.email_verified = True
+        user.updated_at = datetime.utcnow()
+        await session.commit()
+        await session.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to verify email: {str(e)}")
+
+@router.put("/{user_id}/activate", response_model=UserOut)
+async def activate_user(
+    user_id: UUID, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Activate a user account"""
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.is_active = True
+        user.updated_at = datetime.utcnow()
+        await session.commit()
+        await session.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to activate user: {str(e)}")
+
+@router.put("/{user_id}/deactivate", response_model=UserOut)
+async def deactivate_user(
+    user_id: UUID, 
+    session: AsyncSession = Depends(get_session)
+):
+    """Deactivate a user account"""
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.is_active = False
+        user.updated_at = datetime.utcnow()
+        await session.commit()
+        await session.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to deactivate user: {str(e)}")
+
+@router.get("/stats/summary", response_model=dict)
+async def get_user_summary(
+    session: AsyncSession = Depends(get_session)
+):
+    """Get user summary statistics"""
+    try:
+        # Get total count
+        total_count = await session.scalar(select(func.count(User.id)))
+        
+        # Get active count
+        active_count = await session.scalar(select(func.count(User.id)).where(User.is_active == True))
+        
+        # Get verified email count
+        verified_count = await session.scalar(select(func.count(User.id)).where(User.email_verified == True))
+        
+        # Get counts by role
+        role_counts = {}
+        roles = ['super_admin', 'property_manager', 'board_member', 'community_admin', 'resident', 'tenant']
+        
+        for role in roles:
+            count = await session.scalar(select(func.count(User.id)).where(User.role == role))
+            role_counts[role] = count or 0
+        
+        return {
+            "total_users": total_count or 0,
+            "active_users": active_count or 0,
+            "verified_emails": verified_count or 0,
+            "inactive_users": (total_count or 0) - (active_count or 0),
+            "unverified_emails": (total_count or 0) - (verified_count or 0),
+            "role_distribution": role_counts
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user summary: {str(e)}")
+
+@router.get("/{user_id}/residents", response_model=dict)
+async def get_user_residents(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_session)
+):
+    """Get all residents associated with a user"""
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "user_id": user_id,
+            "user_name": f"{user.first_name} {user.last_name}",
+            "residents_count": len(user.residents) if user.residents else 0,
+            "residents": user.residents
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user residents: {str(e)}") 

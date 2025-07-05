@@ -11,6 +11,10 @@ from .routes import residents
 from .routes import payments
 from .routes import maintenance
 from .routes import violations
+from .routes import contractors
+from .routes import maintenance_enhanced
+from .routes import users
+from .routes import residents_enhanced
 
 app = FastAPI(
     title="HOA Management System API",
@@ -39,3 +43,7 @@ app.include_router(residents.router)
 app.include_router(payments.router)
 app.include_router(maintenance.router)
 app.include_router(violations.router)
+app.include_router(contractors.router)
+app.include_router(maintenance_enhanced.router)
+app.include_router(users.router)
+app.include_router(residents_enhanced.router)

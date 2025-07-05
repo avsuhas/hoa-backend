@@ -7,26 +7,32 @@ A comprehensive FastAPI backend for managing Homeowners Association operations w
 - **Property Management**: Manage properties, units, and residents
 - **Financial Tracking**: Handle payments, financial accounts, and management fees
 - **Maintenance Requests**: Track maintenance requests with priorities and status
+- **Enhanced Maintenance**: Advanced maintenance requests with contractor assignment, work logs, and more
 - **Violation Management**: Manage community violations and fines
 - **Meeting Management**: Schedule and track board meetings
 - **Document Management**: Store and manage HOA documents
-- **Service Provider Management**: Track contractors and service providers
+- **Service Provider & Contractor Management**: Track contractors and service providers
+- **User & Role Management**: Manage users, roles, and enhanced resident profiles
 
 ## 🏗️ Architecture
 
 ```
 app/
-├── database.py          # Database connection and session management
-├── main.py             # FastAPI application entry point
-├── models.py           # SQLAlchemy models for all entities
-├── schemas.py          # Pydantic schemas for request/response validation
-└── routes/             # API route modules
-    ├── properties.py   # Property management endpoints
-    ├── units.py        # Unit management endpoints
-    ├── residents.py    # Resident management endpoints
-    ├── payments.py     # Payment tracking endpoints
-    ├── maintenance.py  # Maintenance request endpoints
-    └── violations.py   # Violation management endpoints
+├── database.py              # Database connection and session management
+├── main.py                 # FastAPI application entry point
+├── models.py               # SQLAlchemy models for all entities
+├── schemas.py              # Pydantic schemas for request/response validation
+└── routes/                 # API route modules
+    ├── properties.py       # Property management endpoints
+    ├── units.py            # Unit management endpoints
+    ├── residents.py        # Resident management endpoints
+    ├── residents_enhanced.py # Enhanced resident endpoints
+    ├── users.py            # User management endpoints
+    ├── payments.py         # Payment tracking endpoints
+    ├── maintenance.py      # Basic maintenance request endpoints
+    ├── maintenance_enhanced.py # Enhanced maintenance & work log endpoints
+    ├── contractors.py      # Contractor management endpoints
+    └── violations.py       # Violation management endpoints
 ```
 
 ## 📋 Database Schema
@@ -37,12 +43,16 @@ The system includes the following main entities:
 - **Properties**: HOA properties with details like name, address, total units
 - **Units**: Individual units within properties with specifications
 - **Residents**: People living in units (owners, tenants, board members)
+- **Enhanced Residents**: Residents with user linkage, roles, vehicles, pets, emergency contacts
+- **Users**: System users with roles and authentication fields
 - **Payments**: Financial transactions and fee payments
 - **Maintenance Requests**: Service requests with priorities and tracking
+- **Enhanced Maintenance Requests**: Advanced requests with categories, contractors, scheduling, and more
+- **Maintenance Work Logs**: Track work performed on maintenance requests
 - **Violations**: Community rule violations and enforcement
 - **Meetings**: Board and community meetings
 - **Documents**: File storage and management
-- **Service Providers**: Contractors and service companies
+- **Service Providers & Contractors**: Contractors and service companies
 - **Financial Accounts**: Operating, reserve, and special assessment accounts
 - **Management Fees**: Fee structure and billing configuration
 
@@ -103,7 +113,7 @@ The API will be available at: http://127.0.0.1:8000
 - `GET /units/property/{property_id}` - Get units by property
 - `GET /units/{id}/stats` - Get unit statistics
 
-#### Residents
+#### Residents (Basic)
 - `POST /residents/` - Create a new resident
 - `GET /residents/` - List all residents (with filtering)
 - `GET /residents/{id}` - Get specific resident
@@ -111,6 +121,37 @@ The API will be available at: http://127.0.0.1:8000
 - `DELETE /residents/{id}` - Delete resident
 - `GET /residents/unit/{unit_id}` - Get residents by unit
 - `GET /residents/{id}/stats` - Get resident statistics
+
+#### Enhanced Residents
+- `POST /residents-enhanced/` - Create a new enhanced resident
+- `GET /residents-enhanced/` - List all enhanced residents (with filtering)
+- `GET /residents-enhanced/{id}` - Get specific enhanced resident
+- `PUT /residents-enhanced/{id}` - Update enhanced resident
+- `DELETE /residents-enhanced/{id}` - Delete enhanced resident
+- `GET /residents-enhanced/unit/{unit_id}` - Get enhanced residents by unit
+- `GET /residents-enhanced/property/{property_id}` - Get enhanced residents by property
+- `GET /residents-enhanced/user/{user_id}` - Get enhanced residents by user
+- `PUT /residents-enhanced/{id}/activate` - Activate resident
+- `PUT /residents-enhanced/{id}/deactivate` - Deactivate resident
+- `PUT /residents-enhanced/{id}/set-primary` - Set as primary resident
+- `GET /residents-enhanced/{id}/vehicles` - Get resident vehicles
+- `GET /residents-enhanced/{id}/pets` - Get resident pets
+- `GET /residents-enhanced/{id}/emergency-contact` - Get emergency contact
+- `GET /residents-enhanced/stats/summary` - Get enhanced resident summary statistics
+
+#### Users
+- `POST /users/` - Create a new user
+- `GET /users/` - List all users (with filtering)
+- `GET /users/{id}` - Get specific user
+- `PUT /users/{id}` - Update user
+- `DELETE /users/{id}` - Delete user
+- `GET /users/email/{email}` - Get user by email
+- `GET /users/role/{role}` - Get users by role
+- `PUT /users/{id}/verify-email` - Verify user email
+- `PUT /users/{id}/activate` - Activate user
+- `PUT /users/{id}/deactivate` - Deactivate user
+- `GET /users/stats/summary` - Get user summary statistics
+- `GET /users/{id}/residents` - Get residents linked to user
 
 #### Payments
 - `POST /payments/` - Create a new payment
@@ -122,7 +163,7 @@ The API will be available at: http://127.0.0.1:8000
 - `GET /payments/unit/{unit_id}` - Get payments by unit
 - `GET /payments/stats/summary` - Get payment summary statistics
 
-#### Maintenance Requests
+#### Maintenance Requests (Basic)
 - `POST /maintenance/` - Create a new maintenance request
 - `GET /maintenance/` - List all requests (with filtering)
 - `GET /maintenance/{id}` - Get specific request
@@ -131,6 +172,33 @@ The API will be available at: http://127.0.0.1:8000
 - `GET /maintenance/unit/{unit_id}` - Get requests by unit
 - `GET /maintenance/resident/{resident_id}` - Get requests by resident
 - `GET /maintenance/stats/summary` - Get maintenance summary statistics
+
+#### Enhanced Maintenance Requests
+- `POST /maintenance-enhanced/requests/` - Create a new enhanced maintenance request
+- `GET /maintenance-enhanced/requests/` - List all enhanced requests (with filtering)
+- `GET /maintenance-enhanced/requests/{id}` - Get specific enhanced request
+- `PUT /maintenance-enhanced/requests/{id}` - Update enhanced request
+- `DELETE /maintenance-enhanced/requests/{id}` - Delete enhanced request
+- `GET /maintenance-enhanced/requests/{id}/work-logs` - Get work logs for a request
+- `GET /maintenance-enhanced/stats/summary` - Get enhanced maintenance summary statistics
+
+#### Maintenance Work Logs
+- `POST /maintenance-enhanced/work-logs/` - Create a new work log
+- `GET /maintenance-enhanced/work-logs/` - List all work logs (with filtering)
+- `GET /maintenance-enhanced/work-logs/{id}` - Get specific work log
+- `PUT /maintenance-enhanced/work-logs/{id}` - Update work log
+- `DELETE /maintenance-enhanced/work-logs/{id}` - Delete work log
+- `GET /maintenance-enhanced/work-logs/stats/summary` - Get work log summary statistics
+
+#### Contractors
+- `POST /contractors/` - Create a new contractor
+- `GET /contractors/` - List all contractors (with filtering)
+- `GET /contractors/{id}` - Get specific contractor
+- `PUT /contractors/{id}` - Update contractor
+- `DELETE /contractors/{id}` - Delete contractor
+- `GET /contractors/specialty/{specialty}` - Get contractors by specialty
+- `GET /contractors/stats/summary` - Get contractor summary statistics
+- `GET /contractors/{id}/maintenance-requests` - Get maintenance requests for contractor
 
 #### Violations
 - `POST /violations/` - Create a new violation
@@ -144,65 +212,87 @@ The API will be available at: http://127.0.0.1:8000
 
 ## 🔧 Usage Examples
 
-### Create a Property
+### Create a Contractor
 ```bash
-curl -X POST "http://localhost:8000/properties/" \
+curl -X POST "http://localhost:8000/contractors/" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Sunset Apartments",
-    "address": "123 Main Street, Downtown",
-    "total_units": 50,
-    "property_type": "apartment",
-    "year_built": 2020
+    "name": "John Smith",
+    "company": "Smith Plumbing",
+    "email": "john@smithplumbing.com",
+    "phone": "555-123-4567",
+    "specialties": ["plumbing", "hvac"],
+    "rating": 4.5,
+    "license_number": "PL12345",
+    "insurance_expiry": "2025-12-31"
   }'
 ```
 
-### Create a Unit
+### Create an Enhanced Maintenance Request
 ```bash
-curl -X POST "http://localhost:8000/units/" \
+curl -X POST "http://localhost:8000/maintenance-enhanced/requests/" \
   -H "Content-Type: application/json" \
   -d '{
-    "property_id": 1,
-    "unit_number": "101",
-    "unit_type": "1-bedroom",
-    "square_feet": 750,
-    "bedrooms": 1,
-    "bathrooms": 1.0,
-    "monthly_fee": 1200.00
+    "title": "Fix leaking faucet",
+    "description": "The kitchen faucet is leaking heavily.",
+    "category": "plumbing",
+    "priority": "high",
+    "unit_id": "<unit-uuid>",
+    "property_id": "<property-uuid>",
+    "resident_id": "<resident-uuid>",
+    "created_by": "<user-uuid>"
   }'
 ```
 
-### Create a Resident
+### Create a Maintenance Work Log
 ```bash
-curl -X POST "http://localhost:8000/residents/" \
+curl -X POST "http://localhost:8000/maintenance-enhanced/work-logs/" \
   -H "Content-Type: application/json" \
   -d '{
-    "unit_id": 1,
+    "maintenance_request_id": "<request-uuid>",
+    "worker_name": "Mike Technician",
+    "work_date": "2024-07-01",
+    "hours_worked": 2.5,
+    "work_description": "Replaced faucet and checked for leaks.",
+    "created_by": "<user-uuid>"
+  }'
+```
+
+### Create a User
+```bash
+curl -X POST "http://localhost:8000/users/" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@hoa.com",
+    "first_name": "Admin",
+    "last_name": "User",
+    "phone": "555-987-6543",
+    "role": "super_admin",
+    "is_active": true,
+    "email_verified": true
+  }'
+```
+
+### Create an Enhanced Resident
+```bash
+curl -X POST "http://localhost:8000/residents-enhanced/" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "<user-uuid>",
     "first_name": "John",
     "last_name": "Doe",
-    "email": "john.doe@email.com",
-    "phone": "555-123-4567",
+    "email": "john.doe@example.com",
+    "phone": "555-111-2222",
+    "unit_id": "<unit-uuid>",
+    "property_id": "<property-uuid>",
     "resident_type": "owner",
-    "move_in_date": "2023-01-15",
-    "emergency_contact_name": "Jane Doe",
-    "emergency_contact_phone": "555-987-6543"
-  }'
-```
-
-### Create a Payment
-```bash
-curl -X POST "http://localhost:8000/payments/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resident_id": 1,
-    "unit_id": 1,
-    "amount": 1200.00,
-    "payment_type": "monthly_fee",
-    "payment_method": "online",
-    "payment_date": "2023-12-01",
-    "due_date": "2023-12-01",
-    "status": "paid",
-    "notes": "Monthly HOA fee"
+    "role": "resident",
+    "move_in_date": "2024-01-01",
+    "emergency_contact": {"name": "Jane Doe", "phone": "555-999-8888", "relationship": "spouse"},
+    "vehicle_info": [{"make": "Toyota", "model": "Camry", "year": 2020, "color": "silver", "license_plate": "ABC123"}],
+    "pet_info": [{"name": "Buddy", "type": "dog", "breed": "Golden Retriever", "weight": 65}],
+    "is_primary": true,
+    "created_by": "<user-uuid>"
   }'
 ```
 

@@ -8,7 +8,8 @@ from decimal import Decimal
 from .models import (
     ResidentType, AccountType, PaymentType, PaymentStatus, Priority, 
     MaintenanceStatus, ViolationSeverity, ViolationStatus, MeetingType, 
-    MeetingStatus, AccessLevel, BillingFrequency
+    MeetingStatus, AccessLevel, BillingFrequency, MaintenanceCategory,
+    MaintenanceStatusEnhanced, PreferredTimeSlot, UserRole, ResidentTypeEnhanced
 )
 
 # Base Config
@@ -461,6 +462,301 @@ class ManagementFeeOut(BaseModel):
     billing_frequency: BillingFrequency
     description: Optional[str]
     is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Contractor Schemas
+class ContractorCreate(BaseModel):
+    name: str = Field(..., max_length=100)
+    company: Optional[str] = Field(None, max_length=100)
+    email: EmailStr
+    phone: str = Field(..., max_length=20)
+    specialties: Optional[List[str]] = Field(default=[])
+    rating: Optional[Decimal] = Field(0.00, ge=0, le=5)
+    is_active: Optional[bool] = True
+    license_number: Optional[str] = Field(None, max_length=50)
+    insurance_expiry: Optional[date]
+
+    class Config:
+        from_attributes = True
+
+class ContractorUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=100)
+    company: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr]
+    phone: Optional[str] = Field(None, max_length=20)
+    specialties: Optional[List[str]]
+    rating: Optional[Decimal] = Field(None, ge=0, le=5)
+    is_active: Optional[bool]
+    license_number: Optional[str] = Field(None, max_length=50)
+    insurance_expiry: Optional[date]
+
+    class Config:
+        from_attributes = True
+
+class ContractorOut(BaseModel):
+    id: UUID
+    name: str
+    company: Optional[str]
+    email: str
+    phone: str
+    specialties: List[str]
+    rating: Decimal
+    is_active: bool
+    license_number: Optional[str]
+    insurance_expiry: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Enhanced Maintenance Request Schemas
+class MaintenanceRequestEnhancedCreate(BaseModel):
+    title: str = Field(..., max_length=200)
+    description: str
+    category: MaintenanceCategory
+    priority: Priority
+    status: Optional[MaintenanceStatusEnhanced] = MaintenanceStatusEnhanced.pending
+    unit_id: UUID
+    property_id: UUID
+    resident_id: UUID
+    assigned_to: Optional[str] = Field(None, max_length=100)
+    assigned_to_name: Optional[str] = Field(None, max_length=100)
+    contractor_id: Optional[UUID]
+    estimated_cost: Optional[Decimal] = Field(None, ge=0)
+    actual_cost: Optional[Decimal] = Field(None, ge=0)
+    scheduled_date: Optional[datetime]
+    completed_date: Optional[datetime]
+    images: Optional[List[str]] = Field(default=[])
+    notes: Optional[str]
+    work_order_number: Optional[str] = Field(None, max_length=50)
+    is_emergency: Optional[bool] = False
+    access_instructions: Optional[str]
+    preferred_time_slot: Optional[PreferredTimeSlot]
+    resident_available: Optional[bool] = True
+    created_by: UUID
+
+    class Config:
+        from_attributes = True
+
+class MaintenanceRequestEnhancedUpdate(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    description: Optional[str]
+    category: Optional[MaintenanceCategory]
+    priority: Optional[Priority]
+    status: Optional[MaintenanceStatusEnhanced]
+    assigned_to: Optional[str] = Field(None, max_length=100)
+    assigned_to_name: Optional[str] = Field(None, max_length=100)
+    contractor_id: Optional[UUID]
+    estimated_cost: Optional[Decimal] = Field(None, ge=0)
+    actual_cost: Optional[Decimal] = Field(None, ge=0)
+    scheduled_date: Optional[datetime]
+    completed_date: Optional[datetime]
+    images: Optional[List[str]]
+    notes: Optional[str]
+    work_order_number: Optional[str] = Field(None, max_length=50)
+    is_emergency: Optional[bool]
+    access_instructions: Optional[str]
+    preferred_time_slot: Optional[PreferredTimeSlot]
+    resident_available: Optional[bool]
+    updated_by: Optional[UUID]
+
+    class Config:
+        from_attributes = True
+
+class MaintenanceRequestEnhancedOut(BaseModel):
+    id: UUID
+    title: str
+    description: str
+    category: MaintenanceCategory
+    priority: Priority
+    status: MaintenanceStatusEnhanced
+    unit_id: UUID
+    property_id: UUID
+    resident_id: UUID
+    assigned_to: Optional[str]
+    assigned_to_name: Optional[str]
+    contractor_id: Optional[UUID]
+    estimated_cost: Optional[Decimal]
+    actual_cost: Optional[Decimal]
+    scheduled_date: Optional[datetime]
+    completed_date: Optional[datetime]
+    images: List[str]
+    notes: Optional[str]
+    work_order_number: Optional[str]
+    is_emergency: bool
+    access_instructions: Optional[str]
+    preferred_time_slot: Optional[PreferredTimeSlot]
+    resident_available: bool
+    created_by: UUID
+    updated_by: Optional[UUID]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Maintenance Work Log Schemas
+class MaintenanceWorkLogCreate(BaseModel):
+    maintenance_request_id: UUID
+    worker_id: Optional[UUID]
+    worker_name: str = Field(..., max_length=100)
+    work_date: date
+    hours_worked: Decimal = Field(..., ge=0)
+    work_description: str
+    materials_used: Optional[List[str]] = Field(default=[])
+    cost: Optional[Decimal] = Field(0.00, ge=0)
+    images: Optional[List[str]] = Field(default=[])
+    created_by: UUID
+
+    class Config:
+        from_attributes = True
+
+class MaintenanceWorkLogUpdate(BaseModel):
+    worker_id: Optional[UUID]
+    worker_name: Optional[str] = Field(None, max_length=100)
+    work_date: Optional[date]
+    hours_worked: Optional[Decimal] = Field(None, ge=0)
+    work_description: Optional[str]
+    materials_used: Optional[List[str]]
+    cost: Optional[Decimal] = Field(None, ge=0)
+    images: Optional[List[str]]
+
+    class Config:
+        from_attributes = True
+
+class MaintenanceWorkLogOut(BaseModel):
+    id: UUID
+    maintenance_request_id: UUID
+    worker_id: Optional[UUID]
+    worker_name: str
+    work_date: date
+    hours_worked: Decimal
+    work_description: str
+    materials_used: List[str]
+    cost: Decimal
+    images: List[str]
+    created_by: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# User Schemas
+class UserCreate(BaseModel):
+    email: EmailStr
+    password_hash: Optional[str] = Field(None, max_length=255)
+    first_name: str = Field(..., max_length=50)
+    last_name: str = Field(..., max_length=50)
+    phone: Optional[str] = Field(None, max_length=20)
+    role: Optional[UserRole] = UserRole.resident
+    is_active: Optional[bool] = True
+    email_verified: Optional[bool] = False
+
+    class Config:
+        from_attributes = True
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr]
+    password_hash: Optional[str] = Field(None, max_length=255)
+    first_name: Optional[str] = Field(None, max_length=50)
+    last_name: Optional[str] = Field(None, max_length=50)
+    phone: Optional[str] = Field(None, max_length=20)
+    role: Optional[UserRole]
+    is_active: Optional[bool]
+    email_verified: Optional[bool]
+
+    class Config:
+        from_attributes = True
+
+class UserOut(BaseModel):
+    id: UUID
+    email: str
+    first_name: str
+    last_name: str
+    phone: Optional[str]
+    role: UserRole
+    is_active: bool
+    email_verified: bool
+    last_login_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Enhanced Resident Schemas
+class ResidentEnhancedCreate(BaseModel):
+    user_id: Optional[UUID]
+    first_name: str = Field(..., max_length=50)
+    last_name: str = Field(..., max_length=50)
+    email: str = Field(..., max_length=255)
+    phone: str = Field(..., max_length=20)
+    unit_id: UUID
+    property_id: UUID
+    resident_type: ResidentTypeEnhanced
+    role: Optional[UserRole] = UserRole.resident
+    move_in_date: date
+    move_out_date: Optional[date] = None
+    lease_end_date: Optional[date] = None
+    emergency_contact: dict
+    vehicle_info: Optional[List[dict]] = Field(default=[])
+    pet_info: Optional[List[dict]] = Field(default=[])
+    is_active: Optional[bool] = True
+    is_primary: Optional[bool] = False
+    notes: Optional[str] = None
+    created_by: UUID
+
+    class Config:
+        from_attributes = True
+
+class ResidentEnhancedUpdate(BaseModel):
+    user_id: Optional[UUID]
+    first_name: Optional[str] = Field(None, max_length=50)
+    last_name: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+    resident_type: Optional[ResidentTypeEnhanced]
+    role: Optional[UserRole]
+    move_out_date: Optional[date]
+    lease_end_date: Optional[date]
+    emergency_contact: Optional[dict]
+    vehicle_info: Optional[List[dict]]
+    pet_info: Optional[List[dict]]
+    is_active: Optional[bool]
+    is_primary: Optional[bool]
+    notes: Optional[str]
+    updated_by: Optional[UUID]
+
+    class Config:
+        from_attributes = True
+
+class ResidentEnhancedOut(BaseModel):
+    id: UUID
+    user_id: Optional[UUID]
+    first_name: str
+    last_name: str
+    email: str
+    phone: str
+    unit_id: UUID
+    property_id: UUID
+    resident_type: ResidentTypeEnhanced
+    role: UserRole
+    move_in_date: date
+    move_out_date: Optional[date]
+    lease_end_date: Optional[date]
+    emergency_contact: dict
+    vehicle_info: List[dict]
+    pet_info: List[dict]
+    is_active: bool
+    is_primary: bool
+    notes: Optional[str]
+    created_by: UUID
+    updated_by: Optional[UUID]
     created_at: datetime
     updated_at: datetime
 
