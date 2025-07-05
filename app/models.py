@@ -37,3 +37,17 @@ class EmergencyContact(Base):
     relationship = Column(String, nullable=False)
     phone = Column(String, nullable=False)
     email = Column(String, nullable=True)
+
+
+class VehicleInfo(Base):
+    __tablename__ = "vehicles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    make = Column(String, nullable=False)
+    model = Column(String, nullable=False)
+    year = Column(Integer, nullable=False)
+    color = Column(String, nullable=False)
+    license_plate = Column(String, unique=True, nullable=False)
+    parking_spot = Column(String, nullable=True)
+
+    

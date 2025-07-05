@@ -60,3 +60,29 @@ class EmergencyContactOut(BaseModel):
     relationship: str
     phone: str
     email: Optional[str]
+
+
+class VehicleInfoCreate(BaseModel):
+    make: str
+    model: str
+    year: int
+    color: str
+    license_plate: str
+    parking_spot: Optional[str] = None
+
+class VehicleInfoUpdate(BaseModel):
+    make: Optional[str]
+    model: Optional[str]
+    year: Optional[int]
+    color: Optional[str]
+    license_plate: Optional[str]
+    parking_spot: Optional[str]
+
+class VehicleInfoOut(BaseModel):
+    id: int
+    make: str
+    model: str
+    year: int
+    color: str
+    license_plate: str
+    parking_spot: Optional[str]
