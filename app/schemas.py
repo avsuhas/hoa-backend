@@ -110,4 +110,37 @@ class PetInfoOut(BaseModel):
     weight: Optional[float]
     registration_number: Optional[str]
 
-    
+
+class MaintenanceWorkLogCreate(BaseModel):
+    maintenance_request_id: UUID
+    worker_id: UUID
+    worker_name: str
+    work_date: datetime
+    hours_worked: float
+    work_description: str
+    materials_used: Optional[List[str]] = None
+    cost: Optional[float] = None
+    images: Optional[List[str]] = None
+
+class MaintenanceWorkLogUpdate(BaseModel):
+    worker_name: Optional[str]
+    work_date: Optional[datetime]
+    hours_worked: Optional[float]
+    work_description: Optional[str]
+    materials_used: Optional[List[str]]
+    cost: Optional[float]
+    images: Optional[List[str]]
+
+class MaintenanceWorkLogOut(BaseModel):
+    id: UUID
+    maintenance_request_id: UUID
+    worker_id: UUID
+    worker_name: str
+    work_date: datetime
+    hours_worked: float
+    work_description: str
+    materials_used: Optional[List[str]]
+    cost: Optional[float]
+    images: Optional[List[str]]
+    created_at: datetime
+

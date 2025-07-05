@@ -9,6 +9,8 @@ from .routes import users
 from .routes import emergency_contacts
 from .routes import vehicles
 from .routes import pets
+from .routes import maintenance_work_log
+
 
 app = FastAPI()
 
@@ -26,3 +28,4 @@ app.include_router(users.router)
 app.include_router(emergency_contacts.router)
 app.include_router(vehicles.router)
 app.include_router(pets.router)
+app.include_router(maintenance_work_log.router)

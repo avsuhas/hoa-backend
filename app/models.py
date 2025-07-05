@@ -68,3 +68,19 @@ class PetInfo(Base):
     weight = Column(Float, nullable=True)
     registration_number = Column(String, nullable=True)
 
+
+class MaintenanceWorkLog(Base):
+    __tablename__ = "maintenance_work_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    maintenance_request_id = Column(UUID(as_uuid=True), nullable=False)
+    worker_id = Column(UUID(as_uuid=True), nullable=False)
+    worker_name = Column(String, nullable=False)
+    work_date = Column(DateTime(timezone=True), nullable=False)
+    hours_worked = Column(Float, nullable=False)
+    work_description = Column(String, nullable=False)
+    materials_used = Column(ARRAY(String), nullable=True)
+    cost = Column(Float, nullable=True)
+    images = Column(ARRAY(String), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
