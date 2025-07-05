@@ -9,7 +9,7 @@ from ..database import get_session
 from ..models import PetInfo
 from ..schemas import PetInfoCreate, PetInfoUpdate, PetInfoOut
 
-router = APIRouter(prefix="/pets", tags=["Pet Info"])
+router = APIRouter(prefix="/pets", tags=["Pets Info"])
 
 @router.post("/", response_model=PetInfoOut)
 async def create_pet(pet: PetInfoCreate, session: AsyncSession = Depends(get_session)):
