@@ -6,6 +6,7 @@ from .models import User
 from .schemas import UserOut
 from typing import List
 from .routes import users 
+from .routes import emergency_contacts
 
 app = FastAPI()
 
@@ -20,3 +21,4 @@ def read_root():
 
 
 app.include_router(users.router)
+app.include_router(emergency_contacts.router)
