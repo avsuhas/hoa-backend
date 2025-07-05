@@ -8,6 +8,7 @@ from typing import List
 from .routes import users 
 from .routes import emergency_contacts
 from .routes import vehicles
+from .routes import pets
 
 app = FastAPI()
 
@@ -24,3 +25,4 @@ def read_root():
 app.include_router(users.router)
 app.include_router(emergency_contacts.router)
 app.include_router(vehicles.router)
+app.include_router(pets.router)

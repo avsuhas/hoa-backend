@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime
 from .models import UserRole
+from .models import PetType
 from uuid import UUID
 
 class Config:
@@ -86,3 +87,27 @@ class VehicleInfoOut(BaseModel):
     color: str
     license_plate: str
     parking_spot: Optional[str]
+
+class PetInfoCreate(BaseModel):
+    name: str
+    type: PetType
+    breed: Optional[str] = None
+    weight: Optional[float] = None
+    registration_number: Optional[str] = None
+
+class PetInfoUpdate(BaseModel):
+    name: Optional[str]
+    type: Optional[PetType]
+    breed: Optional[str]
+    weight: Optional[float]
+    registration_number: Optional[str]
+
+class PetInfoOut(BaseModel):
+    id: int
+    name: str
+    type: PetType
+    breed: Optional[str]
+    weight: Optional[float]
+    registration_number: Optional[str]
+
+    

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, ARRAY, Integer
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, ARRAY, Integer, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -50,4 +50,21 @@ class VehicleInfo(Base):
     license_plate = Column(String, unique=True, nullable=False)
     parking_spot = Column(String, nullable=True)
 
-    
+
+class PetType(enum.Enum):
+    dog = "dog"
+    cat = "cat"
+    bird = "bird"
+    fish = "fish"
+    other = "other"
+
+class PetInfo(Base):
+    __tablename__ = "pets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    type = Column(Enum(PetType), nullable=False)
+    breed = Column(String, nullable=True)
+    weight = Column(Float, nullable=True)
+    registration_number = Column(String, nullable=True)
+
