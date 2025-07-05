@@ -3,9 +3,11 @@
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime
+from uuid import UUID
 from .models import UserRole
 from .models import PetType
-from uuid import UUID
+from .models import PropertyType
+
 
 class Config:
     orm_mode = True
@@ -144,3 +146,44 @@ class MaintenanceWorkLogOut(BaseModel):
     images: Optional[List[str]]
     created_at: datetime
 
+class PropertyCreate(BaseModel):
+    name: str
+    address: str
+    city: str
+    state: str
+    zip_code: str
+    property_type: PropertyType
+    total_units: int
+    year_built: int
+    amenities: List[str]
+    management_company: Optional[str] = None
+    is_active: bool = True
+
+class PropertyUpdate(BaseModel):
+    name: Optional[str]
+    address: Optional[str]
+    city: Optional[str]
+    state: Optional[str]
+    zip_code: Optional[str]
+    property_type: Optional[PropertyType]
+    total_units: Optional[int]
+    year_built: Optional[int]
+    amenities: Optional[List[str]]
+    management_company: Optional[str]
+    is_active: Optional[bool]
+
+class PropertyOut(BaseModel):
+    id: UUID
+    name: str
+    address: str
+    city: str
+    state: str
+    zip_code: str
+    property_type: PropertyType
+    total_units: int
+    year_built: int
+    amenities: List[str]
+    management_company: Optional[str]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime

@@ -84,3 +84,28 @@ class MaintenanceWorkLog(Base):
     images = Column(ARRAY(String), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+
+class PropertyType(enum.Enum):
+    condominium = "condominium"
+    townhouse = "townhouse"
+    single_family = "single_family"
+    apartment = "apartment"
+
+class Property(Base):
+    __tablename__ = "properties"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    address = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    zip_code = Column(String, nullable=False)
+    property_type = Column(Enum(PropertyType), nullable=False)
+    total_units = Column(Integer, nullable=False)
+    year_built = Column(Integer, nullable=False)
+    amenities = Column(ARRAY(String), nullable=False)
+    management_company = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
