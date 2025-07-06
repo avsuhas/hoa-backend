@@ -1,7 +1,9 @@
 # api/index.py
 
-from mangum import Mangum
-from app.main import app  # reuse your existing FastAPI app
+from app.main import app
+from asgiref.wsgi import WsgiToAsgi
 
-print("✔ Booting Mangum handler for FastAPI on Vercel")  # ✅ debug
-handler = Mangum(app)
+asgi_app = WsgiToAsgi(app)
+
+def handler(environ, start_response):
+    return asgi_app(environ, start_response)
