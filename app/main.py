@@ -24,9 +24,8 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup():
-    if os.getenv("VERCEL") != "1":
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 @app.get("/")
 def read_root():
