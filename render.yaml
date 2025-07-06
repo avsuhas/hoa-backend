@@ -1,0 +1,11 @@
+# render.yaml
+services:
+  - type: web
+    name: hoa-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: ./start.sh
+    envVars:
+      - key: DATABASE_URL
+        value: YOUR_NEON_DB_URL  # replace in Render UI
