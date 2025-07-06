@@ -1,11 +1,15 @@
-# render.yaml
 services:
   - type: web
     name: hoa-api
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      sudo apt-get update && sudo apt-get install -y python3.11 python3.11-venv
+      python3.11 -m venv venv
+      . venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
     startCommand: ./start.sh
     envVars:
       - key: DATABASE_URL
-        value: YOUR_NEON_DB_URL  # replace in Render UI
+        value: YOUR_NEON_DB_URL
