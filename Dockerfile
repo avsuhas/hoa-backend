@@ -1,4 +1,9 @@
 # Dockerfile
+# Render needs to have lower python version to deploy the python FastAPI app. 
+# Render currently does not expose a "Python Version" setting in the dashboard for web services and 
+# uses the latest version of Python 3.13 by default
+# For Render platform constraints we need python 3.11 version, That needs to use lower version of SQLAlchemy.  
+# This a hack to get the app to work on Render. 
 
 FROM python:3.11-slim
 
