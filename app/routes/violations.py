@@ -7,15 +7,17 @@ from typing import List, Optional
 from datetime import datetime, date
 
 from ..database import get_session
-from ..models import Violation, Resident, Unit
+from ..models import Violation, Resident, Unit, User
 from ..schemas import ViolationCreate, ViolationUpdate, ViolationOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/violations", tags=["Violations"])
 
 @router.post("/", response_model=ViolationOut, status_code=201)
 async def create_violation(
     data: ViolationCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Create a new violation"""
     try:
@@ -49,7 +51,8 @@ async def list_violations(
     severity: Optional[str] = Query(None, description="Filter by severity"),
     status: Optional[str] = Query(None, description="Filter by status"),
     violation_type: Optional[str] = Query(None, description="Filter by violation type"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all violations with optional filtering and pagination"""
     try:
@@ -79,7 +82,8 @@ async def list_violations(
 @router.get("/{violation_id}", response_model=ViolationOut)
 async def get_violation(
     violation_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get a specific violation by ID"""
     try:
@@ -96,7 +100,8 @@ async def get_violation(
 async def update_violation(
     violation_id: int, 
     updates: ViolationUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Update a violation"""
     try:
@@ -121,7 +126,8 @@ async def update_violation(
 @router.delete("/{violation_id}", status_code=204)
 async def delete_violation(
     violation_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a violation"""
     try:
@@ -142,7 +148,8 @@ async def get_violations_by_unit(
     unit_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all violations for a specific unit"""
     try:
@@ -164,7 +171,8 @@ async def get_violations_by_resident(
     resident_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all violations for a specific resident"""
     try:
@@ -183,7 +191,8 @@ async def get_violations_by_resident(
 
 @router.get("/stats/summary", response_model=dict)
 async def get_violation_summary(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get violation summary statistics"""
     try:

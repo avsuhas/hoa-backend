@@ -7,15 +7,17 @@ from typing import List, Optional
 from datetime import datetime
 
 from ..database import get_session
-from ..models import Property
+from ..models import Property, User
 from ..schemas import PropertyCreate, PropertyUpdate, PropertyOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/properties", tags=["Properties"])
 
 @router.post("/", response_model=PropertyOut, status_code=201)
 async def create_property(
     data: PropertyCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Create a new property"""
     try:
@@ -34,7 +36,8 @@ async def list_properties(
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     search: Optional[str] = Query(None, description="Search by property name or address"),
     property_type: Optional[str] = Query(None, description="Filter by property type"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all properties with optional filtering and pagination"""
     try:
@@ -58,7 +61,8 @@ async def list_properties(
 @router.get("/{property_id}", response_model=PropertyOut)
 async def get_property(
     property_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific property by ID"""
     try:
@@ -75,7 +79,8 @@ async def get_property(
 async def update_property(
     property_id: int, 
     updates: PropertyUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Update a property"""
     try:
@@ -100,7 +105,8 @@ async def update_property(
 @router.delete("/{property_id}", status_code=204)
 async def delete_property(
     property_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin"]))
 ):
     """Delete a property"""
     try:
@@ -119,7 +125,8 @@ async def delete_property(
 @router.get("/{property_id}/stats", response_model=dict)
 async def get_property_stats(
     property_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get property statistics"""
     try:

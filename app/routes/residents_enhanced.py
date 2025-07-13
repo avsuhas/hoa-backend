@@ -10,13 +10,15 @@ from uuid import UUID
 from ..database import get_session
 from ..models import ResidentEnhanced, User
 from ..schemas import ResidentEnhancedCreate, ResidentEnhancedUpdate, ResidentEnhancedOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/residents-enhanced", tags=["Enhanced Residents"])
 
 @router.post("/", response_model=ResidentEnhancedOut, status_code=201)
 async def create_resident(
     data: ResidentEnhancedCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Create a new enhanced resident"""
     try:
@@ -48,7 +50,8 @@ async def list_residents(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     is_primary: Optional[bool] = Query(None, description="Filter by primary resident status"),
     search: Optional[str] = Query(None, description="Search by name or email"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all enhanced residents with optional filtering and pagination"""
     try:
@@ -82,7 +85,8 @@ async def list_residents(
 @router.get("/{resident_id}", response_model=ResidentEnhancedOut)
 async def get_resident(
     resident_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific enhanced resident by ID"""
     try:
@@ -99,7 +103,8 @@ async def get_resident(
 async def update_resident(
     resident_id: UUID, 
     updates: ResidentEnhancedUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Update an enhanced resident"""
     try:
@@ -131,7 +136,8 @@ async def update_resident(
 @router.delete("/{resident_id}", status_code=204)
 async def delete_resident(
     resident_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete an enhanced resident"""
     try:
@@ -152,7 +158,8 @@ async def get_residents_by_unit(
     unit_id: UUID,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all residents for a specific unit"""
     try:
@@ -167,7 +174,8 @@ async def get_residents_by_property(
     property_id: UUID,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all residents for a specific property"""
     try:
@@ -180,7 +188,8 @@ async def get_residents_by_property(
 @router.get("/user/{user_id}", response_model=List[ResidentEnhancedOut])
 async def get_residents_by_user(
     user_id: UUID,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all residents associated with a specific user"""
     try:
@@ -197,7 +206,8 @@ async def get_residents_by_user(
 @router.put("/{resident_id}/activate", response_model=ResidentEnhancedOut)
 async def activate_resident(
     resident_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Activate a resident account"""
     try:
@@ -219,7 +229,8 @@ async def activate_resident(
 @router.put("/{resident_id}/deactivate", response_model=ResidentEnhancedOut)
 async def deactivate_resident(
     resident_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Deactivate a resident account"""
     try:
@@ -241,7 +252,8 @@ async def deactivate_resident(
 @router.put("/{resident_id}/set-primary", response_model=ResidentEnhancedOut)
 async def set_primary_resident(
     resident_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Set a resident as the primary resident for their unit"""
     try:
@@ -272,7 +284,8 @@ async def set_primary_resident(
 
 @router.get("/stats/summary", response_model=dict)
 async def get_resident_summary(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get resident summary statistics"""
     try:
@@ -319,7 +332,8 @@ async def get_resident_summary(
 @router.get("/{resident_id}/vehicles", response_model=dict)
 async def get_resident_vehicles(
     resident_id: UUID,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get vehicle information for a specific resident"""
     try:
@@ -340,7 +354,8 @@ async def get_resident_vehicles(
 @router.get("/{resident_id}/pets", response_model=dict)
 async def get_resident_pets(
     resident_id: UUID,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get pet information for a specific resident"""
     try:
@@ -361,7 +376,8 @@ async def get_resident_pets(
 @router.get("/{resident_id}/emergency-contact", response_model=dict)
 async def get_resident_emergency_contact(
     resident_id: UUID,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get emergency contact information for a specific resident"""
     try:
