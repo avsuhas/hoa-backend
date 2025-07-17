@@ -8,15 +8,17 @@ from datetime import datetime, date
 from uuid import UUID
 
 from ..database import get_session
-from ..models import Contractor
+from ..models import Contractor, User
 from ..schemas import ContractorCreate, ContractorUpdate, ContractorOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/contractors", tags=["Contractors"])
 
 @router.post("/", response_model=ContractorOut, status_code=201)
 async def create_contractor(
     data: ContractorCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Create a new contractor"""
     try:
@@ -37,7 +39,8 @@ async def list_contractors(
     specialty: Optional[str] = Query(None, description="Filter by specialty"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     min_rating: Optional[float] = Query(None, ge=0, le=5, description="Minimum rating filter"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all contractors with optional filtering and pagination"""
     try:
@@ -68,7 +71,8 @@ async def list_contractors(
 @router.get("/{contractor_id}", response_model=ContractorOut)
 async def get_contractor(
     contractor_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific contractor by ID"""
     try:
@@ -85,7 +89,8 @@ async def get_contractor(
 async def update_contractor(
     contractor_id: UUID, 
     updates: ContractorUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Update a contractor"""
     try:
@@ -110,7 +115,8 @@ async def update_contractor(
 @router.delete("/{contractor_id}", status_code=204)
 async def delete_contractor(
     contractor_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a contractor"""
     try:
@@ -131,7 +137,8 @@ async def get_contractors_by_specialty(
     specialty: str,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all contractors with a specific specialty"""
     try:
@@ -143,7 +150,8 @@ async def get_contractors_by_specialty(
 
 @router.get("/stats/summary", response_model=dict)
 async def get_contractor_summary(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get contractor summary statistics"""
     try:
@@ -174,7 +182,8 @@ async def get_contractor_summary(
 @router.get("/{contractor_id}/maintenance-requests", response_model=dict)
 async def get_contractor_maintenance_requests(
     contractor_id: UUID,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get maintenance requests assigned to a specific contractor"""
     try:

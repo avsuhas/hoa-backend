@@ -8,7 +8,7 @@ from datetime import datetime, date
 from uuid import UUID
 
 from ..database import get_session
-from ..models import MaintenanceRequestEnhanced, MaintenanceWorkLog, Contractor
+from ..models import MaintenanceRequestEnhanced, MaintenanceWorkLog, Contractor, User
 from ..schemas import (
     MaintenanceRequestEnhancedCreate, 
     MaintenanceRequestEnhancedUpdate, 
@@ -17,6 +17,7 @@ from ..schemas import (
     MaintenanceWorkLogUpdate,
     MaintenanceWorkLogOut
 )
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/maintenance-enhanced", tags=["Enhanced Maintenance"])
 
@@ -24,7 +25,8 @@ router = APIRouter(prefix="/maintenance-enhanced", tags=["Enhanced Maintenance"]
 @router.post("/requests/", response_model=MaintenanceRequestEnhancedOut, status_code=201)
 async def create_maintenance_request(
     data: MaintenanceRequestEnhancedCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Create a new enhanced maintenance request"""
     try:
@@ -50,7 +52,8 @@ async def list_maintenance_requests(
     contractor_id: Optional[UUID] = Query(None, description="Filter by contractor ID"),
     is_emergency: Optional[bool] = Query(None, description="Filter by emergency status"),
     search: Optional[str] = Query(None, description="Search in title and description"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all enhanced maintenance requests with filtering and pagination"""
     try:
@@ -87,7 +90,8 @@ async def list_maintenance_requests(
 @router.get("/requests/{request_id}", response_model=MaintenanceRequestEnhancedOut)
 async def get_maintenance_request(
     request_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific enhanced maintenance request by ID"""
     try:
@@ -104,7 +108,8 @@ async def get_maintenance_request(
 async def update_maintenance_request(
     request_id: UUID, 
     updates: MaintenanceRequestEnhancedUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Update an enhanced maintenance request"""
     try:
@@ -129,7 +134,8 @@ async def update_maintenance_request(
 @router.delete("/requests/{request_id}", status_code=204)
 async def delete_maintenance_request(
     request_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete an enhanced maintenance request"""
     try:
@@ -148,7 +154,8 @@ async def delete_maintenance_request(
 @router.get("/requests/{request_id}/work-logs", response_model=List[MaintenanceWorkLogOut])
 async def get_maintenance_work_logs(
     request_id: UUID,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all work logs for a specific maintenance request"""
     try:
@@ -164,7 +171,8 @@ async def get_maintenance_work_logs(
 
 @router.get("/stats/summary", response_model=dict)
 async def get_maintenance_summary(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get maintenance request summary statistics"""
     try:
@@ -213,7 +221,8 @@ async def get_maintenance_summary(
 @router.post("/work-logs/", response_model=MaintenanceWorkLogOut, status_code=201)
 async def create_work_log(
     data: MaintenanceWorkLogCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Create a new maintenance work log"""
     try:
@@ -240,7 +249,8 @@ async def list_work_logs(
     maintenance_request_id: Optional[UUID] = Query(None, description="Filter by maintenance request ID"),
     worker_name: Optional[str] = Query(None, description="Filter by worker name"),
     work_date: Optional[date] = Query(None, description="Filter by work date"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all maintenance work logs with filtering and pagination"""
     try:
@@ -262,7 +272,8 @@ async def list_work_logs(
 @router.get("/work-logs/{work_log_id}", response_model=MaintenanceWorkLogOut)
 async def get_work_log(
     work_log_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get a specific maintenance work log by ID"""
     try:
@@ -279,7 +290,8 @@ async def get_work_log(
 async def update_work_log(
     work_log_id: UUID, 
     updates: MaintenanceWorkLogUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Update a maintenance work log"""
     try:
@@ -303,7 +315,8 @@ async def update_work_log(
 @router.delete("/work-logs/{work_log_id}", status_code=204)
 async def delete_work_log(
     work_log_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a maintenance work log"""
     try:
@@ -321,7 +334,8 @@ async def delete_work_log(
 
 @router.get("/work-logs/stats/summary", response_model=dict)
 async def get_work_log_summary(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get work log summary statistics"""
     try:

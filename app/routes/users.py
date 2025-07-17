@@ -10,15 +10,17 @@ from uuid import UUID
 from ..database import get_session
 from ..models import User
 from ..schemas import UserCreate, UserUpdate, UserOut
+from ..auth import get_current_active_user, require_role, require_roles, get_password_hash
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.post("/", response_model=UserOut, status_code=201)
 async def create_user(
     data: UserCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
-    """Create a new user"""
+    """Create a new user (Admin only)"""
     try:
         # Check if email already exists
         existing_user = await session.scalar(
@@ -27,7 +29,15 @@ async def create_user(
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already registered")
         
-        new_user = User(**data.dict())
+        # Hash the password
+        hashed_password = get_password_hash(data.password)
+        
+        # Create user data without password
+        user_data = data.dict()
+        user_data.pop("password")
+        user_data["password_hash"] = hashed_password
+        
+        new_user = User(**user_data)
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
@@ -46,14 +56,27 @@ async def list_users(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     email_verified: Optional[bool] = Query(None, description="Filter by email verification status"),
     search: Optional[str] = Query(None, description="Search by name or email"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all users with optional filtering and pagination"""
     try:
         query = select(User)
         
         if role:
-            query = query.where(User.role == role)
+            # Import UserRole enum to validate the role parameter
+            from ..models import UserRole
+            
+            # Validate that the role is a valid enum value
+            try:
+                user_role = UserRole(role)
+                query = query.where(User.role == user_role)
+            except ValueError:
+                valid_roles = [r.value for r in UserRole]
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Invalid role. Valid roles are: {', '.join(valid_roles)}"
+                )
         if is_active is not None:
             query = query.where(User.is_active == is_active)
         if email_verified is not None:
@@ -68,13 +91,16 @@ async def list_users(
         query = query.offset(skip).limit(limit)
         result = await session.execute(query)
         return result.scalars().all()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
 
 @router.get("/{user_id}", response_model=UserOut)
 async def get_user(
     user_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific user by ID"""
     try:
@@ -91,7 +117,8 @@ async def get_user(
 async def update_user(
     user_id: UUID, 
     updates: UserUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Update a user"""
     try:
@@ -125,7 +152,8 @@ async def update_user(
 @router.delete("/{user_id}", status_code=204)
 async def delete_user(
     user_id: UUID, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a user"""
     try:
@@ -166,9 +194,24 @@ async def get_users_by_role(
 ):
     """Get all users with a specific role"""
     try:
-        query = select(User).where(User.role == role).offset(skip).limit(limit)
+        # Import UserRole enum to validate the role parameter
+        from ..models import UserRole
+        
+        # Validate that the role is a valid enum value
+        try:
+            user_role = UserRole(role)
+        except ValueError:
+            valid_roles = [r.value for r in UserRole]
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid role. Valid roles are: {', '.join(valid_roles)}"
+            )
+        
+        query = select(User).where(User.role == user_role).offset(skip).limit(limit)
         result = await session.execute(query)
         return result.scalars().all()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
 

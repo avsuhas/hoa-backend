@@ -7,15 +7,17 @@ from typing import List, Optional
 from datetime import datetime, date
 
 from ..database import get_session
-from ..models import MaintenanceRequest, Resident, Unit
+from ..models import MaintenanceRequest, Resident, Unit, User
 from ..schemas import MaintenanceRequestCreate, MaintenanceRequestUpdate, MaintenanceRequestOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance Requests"])
 
 @router.post("/", response_model=MaintenanceRequestOut, status_code=201)
 async def create_maintenance_request(
     data: MaintenanceRequestCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Create a new maintenance request"""
     try:
@@ -50,7 +52,8 @@ async def list_maintenance_requests(
     status: Optional[str] = Query(None, description="Filter by status"),
     category: Optional[str] = Query(None, description="Filter by category"),
     assigned_to: Optional[str] = Query(None, description="Filter by assigned person"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all maintenance requests with optional filtering and pagination"""
     try:
@@ -83,7 +86,8 @@ async def list_maintenance_requests(
 @router.get("/{request_id}", response_model=MaintenanceRequestOut)
 async def get_maintenance_request(
     request_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific maintenance request by ID"""
     try:
@@ -100,7 +104,8 @@ async def get_maintenance_request(
 async def update_maintenance_request(
     request_id: int, 
     updates: MaintenanceRequestUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Update a maintenance request"""
     try:
@@ -125,7 +130,8 @@ async def update_maintenance_request(
 @router.delete("/{request_id}", status_code=204)
 async def delete_maintenance_request(
     request_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a maintenance request"""
     try:
@@ -146,7 +152,8 @@ async def get_maintenance_requests_by_unit(
     unit_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all maintenance requests for a specific unit"""
     try:
@@ -168,7 +175,8 @@ async def get_maintenance_requests_by_resident(
     resident_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all maintenance requests for a specific resident"""
     try:
@@ -187,7 +195,8 @@ async def get_maintenance_requests_by_resident(
 
 @router.get("/stats/summary", response_model=dict)
 async def get_maintenance_summary(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get maintenance request summary statistics"""
     try:

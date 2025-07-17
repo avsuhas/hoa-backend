@@ -646,10 +646,33 @@ class MaintenanceWorkLogOut(BaseModel):
     class Config:
         from_attributes = True
 
+# Authentication Schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str = Field(..., max_length=50)
+    last_name: str = Field(..., max_length=50)
+    phone: Optional[str] = Field(None, max_length=20)
+    role: Optional[UserRole] = UserRole.resident
+
+    class Config:
+        from_attributes = True
+
 # User Schemas
 class UserCreate(BaseModel):
     email: EmailStr
-    password_hash: Optional[str] = Field(None, max_length=255)
+    password: str
     first_name: str = Field(..., max_length=50)
     last_name: str = Field(..., max_length=50)
     phone: Optional[str] = Field(None, max_length=20)

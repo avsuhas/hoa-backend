@@ -7,15 +7,17 @@ from typing import List, Optional
 from datetime import datetime
 
 from ..database import get_session
-from ..models import Resident, Unit
+from ..models import Resident, Unit, User
 from ..schemas import ResidentCreate, ResidentUpdate, ResidentOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/residents", tags=["Residents"])
 
 @router.post("/", response_model=ResidentOut, status_code=201)
 async def create_resident(
     data: ResidentCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Create a new resident"""
     try:
@@ -42,7 +44,8 @@ async def list_residents(
     unit_id: Optional[int] = Query(None, description="Filter by unit ID"),
     resident_type: Optional[str] = Query(None, description="Filter by resident type"),
     search: Optional[str] = Query(None, description="Search by name or email"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all residents with optional filtering and pagination"""
     try:
@@ -70,7 +73,8 @@ async def list_residents(
 @router.get("/{resident_id}", response_model=ResidentOut)
 async def get_resident(
     resident_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific resident by ID"""
     try:
@@ -87,7 +91,8 @@ async def get_resident(
 async def update_resident(
     resident_id: int, 
     updates: ResidentUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Update a resident"""
     try:
@@ -112,7 +117,8 @@ async def update_resident(
 @router.delete("/{resident_id}", status_code=204)
 async def delete_resident(
     resident_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a resident"""
     try:
@@ -133,7 +139,8 @@ async def get_residents_by_unit(
     unit_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all residents for a specific unit"""
     try:
@@ -153,7 +160,8 @@ async def get_residents_by_unit(
 @router.get("/{resident_id}/stats", response_model=dict)
 async def get_resident_stats(
     resident_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get resident statistics"""
     try:

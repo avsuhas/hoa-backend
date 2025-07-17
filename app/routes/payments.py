@@ -7,15 +7,17 @@ from typing import List, Optional
 from datetime import datetime, date
 
 from ..database import get_session
-from ..models import Payment, Resident, Unit
+from ..models import Payment, Resident, Unit, User
 from ..schemas import PaymentCreate, PaymentUpdate, PaymentOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 @router.post("/", response_model=PaymentOut, status_code=201)
 async def create_payment(
     data: PaymentCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Create a new payment"""
     try:
@@ -50,7 +52,8 @@ async def list_payments(
     status: Optional[str] = Query(None, description="Filter by payment status"),
     start_date: Optional[date] = Query(None, description="Filter by start date"),
     end_date: Optional[date] = Query(None, description="Filter by end date"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all payments with optional filtering and pagination"""
     try:
@@ -83,7 +86,8 @@ async def list_payments(
 @router.get("/{payment_id}", response_model=PaymentOut)
 async def get_payment(
     payment_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get a specific payment by ID"""
     try:
@@ -100,7 +104,8 @@ async def get_payment(
 async def update_payment(
     payment_id: int, 
     updates: PaymentUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Update a payment"""
     try:
@@ -124,7 +129,8 @@ async def update_payment(
 @router.delete("/{payment_id}", status_code=204)
 async def delete_payment(
     payment_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a payment"""
     try:
@@ -145,7 +151,8 @@ async def get_payments_by_resident(
     resident_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all payments for a specific resident"""
     try:
@@ -167,7 +174,8 @@ async def get_payments_by_unit(
     unit_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get all payments for a specific unit"""
     try:
@@ -188,7 +196,8 @@ async def get_payments_by_unit(
 async def get_payment_summary(
     start_date: Optional[date] = Query(None, description="Start date for summary"),
     end_date: Optional[date] = Query(None, description="End date for summary"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager", "board_member"]))
 ):
     """Get payment summary statistics"""
     try:

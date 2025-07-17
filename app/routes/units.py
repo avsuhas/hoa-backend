@@ -7,15 +7,17 @@ from typing import List, Optional
 from datetime import datetime
 
 from ..database import get_session
-from ..models import Unit, Property
+from ..models import Unit, Property, User
 from ..schemas import UnitCreate, UnitUpdate, UnitOut
+from ..auth import get_current_active_user, require_roles
 
 router = APIRouter(prefix="/units", tags=["Units"])
 
 @router.post("/", response_model=UnitOut, status_code=201)
 async def create_unit(
     data: UnitCreate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Create a new unit"""
     try:
@@ -42,7 +44,8 @@ async def list_units(
     property_id: Optional[int] = Query(None, description="Filter by property ID"),
     unit_type: Optional[str] = Query(None, description="Filter by unit type"),
     search: Optional[str] = Query(None, description="Search by unit number"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all units with optional filtering and pagination"""
     try:
@@ -66,7 +69,8 @@ async def list_units(
 @router.get("/{unit_id}", response_model=UnitOut)
 async def get_unit(
     unit_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific unit by ID"""
     try:
@@ -83,7 +87,8 @@ async def get_unit(
 async def update_unit(
     unit_id: int, 
     updates: UnitUpdate, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Update a unit"""
     try:
@@ -108,7 +113,8 @@ async def update_unit(
 @router.delete("/{unit_id}", status_code=204)
 async def delete_unit(
     unit_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_roles(["super_admin", "property_manager"]))
 ):
     """Delete a unit"""
     try:
@@ -129,7 +135,8 @@ async def get_units_by_property(
     property_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all units for a specific property"""
     try:
@@ -149,7 +156,8 @@ async def get_units_by_property(
 @router.get("/{unit_id}/stats", response_model=dict)
 async def get_unit_stats(
     unit_id: int, 
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get unit statistics"""
     try:
