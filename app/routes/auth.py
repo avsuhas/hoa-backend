@@ -11,52 +11,60 @@ from ..database import get_session
 from ..models import User
 from ..schemas import UserLogin, UserRegister, Token, UserOut
 from ..auth import verify_password, get_password_hash, create_access_token, get_current_active_user
+from ..utils.email import send_email_async
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=UserOut, status_code=201)
-async def register(
-    user_data: UserRegister,
+async def register_user(
+    data: UserRegister,
     session: AsyncSession = Depends(get_session)
 ):
-    """Register a new user"""
+    """Register a new user and send a welcome email"""
     try:
         # Check if email already exists
         existing_user = await session.scalar(
-            select(User).where(User.email == user_data.email)
+            select(User).where(User.email == data.email)
         )
         if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-        
+            raise HTTPException(status_code=400, detail="Email already registered")
+
         # Hash the password
-        hashed_password = get_password_hash(user_data.password)
-        
-        # Create new user
-        new_user = User(
-            email=user_data.email,
-            password_hash=hashed_password,
-            first_name=user_data.first_name,
-            last_name=user_data.last_name,
-            phone=user_data.phone,
-            role=user_data.role
-        )
-        
+        hashed_password = get_password_hash(data.password)
+
+        # Create user data without password
+        user_data = data.dict()
+        user_data.pop("password")
+        user_data["password_hash"] = hashed_password
+
+        new_user = User(**user_data)
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
-        
+
+        # Send welcome email (do not block registration if email fails)
+        try:
+            subject = "Welcome to CommunityPro Portal!"
+            body = f"""
+Hi {new_user.first_name},
+
+Welcome to the CommunityPro Portal! Your account has been created successfully.
+
+We will be in touch soon.
+
+Best regards,
+CommunityPro Team
+"""
+            await send_email_async(new_user.email, subject, body)
+        except Exception as e:
+            print(f"[WARN] Failed to send welcome email: {e}")
+
         return new_user
     except HTTPException:
         raise
     except Exception as e:
         await session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to register user: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Failed to register user: {str(e)}")
 
 @router.post("/login", response_model=Token)
 async def login(
