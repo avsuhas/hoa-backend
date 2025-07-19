@@ -9,8 +9,10 @@ from uuid import UUID
 
 from ..database import get_session
 from ..models import User
-from ..schemas import UserCreate, UserUpdate, UserOut
-from ..auth import get_current_active_user, require_role, require_roles, get_password_hash
+from ..schemas import UserCreate, UserUpdate, UserOut, UserApproval
+from ..auth import get_current_active_user, require_role, require_roles, get_password_hash, create_access_token
+from datetime import timedelta
+from ..utils.email import send_email_async
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -280,6 +282,58 @@ async def deactivate_user(
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=400, detail=f"Failed to deactivate user: {str(e)}")
+
+@router.post("/approve", status_code=200)
+async def approve_user(
+    data: UserApproval,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_role("super_admin"))
+):
+    """Approve a pending user, assign a role, and send password setup email"""
+    from ..models import UserRole
+    try:
+        user = await session.get(User, data.user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if user.is_active:
+            raise HTTPException(status_code=400, detail="User is already active")
+        if data.role not in [r.value for r in UserRole if r.value in ("board_member", "community_admin", "property_manager")]:
+            raise HTTPException(status_code=400, detail="Invalid role for approval")
+        # Assign role and set as inactive until password is set
+        user.role = UserRole(data.role)
+        user.is_active = False
+        # Generate password setup token (valid for 24h)
+        expires = datetime.utcnow() + timedelta(hours=24)
+        token_data = {"sub": str(user.id), "email": user.email, "purpose": "setup_password"}
+        token = create_access_token(token_data, expires_delta=timedelta(hours=24))
+        user.password_reset_token = token
+        user.password_reset_expires = expires
+        await session.commit()
+        # Send setup password email
+        try:
+            link = f"http://localhost:8000/setup-password?token={token}"
+            subject = "Your CommunityPro Account is Approved - Set Your Password"
+            body = f"""
+Hi {user.first_name},
+
+Your account has been approved! Please set your password using the link below:
+
+{link}
+
+This link will expire in 24 hours.
+
+Best regards,
+CommunityPro Team
+"""
+            await send_email_async(user.email, subject, body)
+        except Exception as e:
+            print(f"[WARN] Failed to send setup password email: {e}")
+        return {"message": "User approved and setup email sent."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to approve user: {str(e)}")
 
 @router.get("/stats/summary", response_model=dict)
 async def get_user_summary(

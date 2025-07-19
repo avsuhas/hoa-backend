@@ -4,23 +4,23 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from ..database import get_session
 from ..models import User
-from ..schemas import UserLogin, UserRegister, Token, UserOut
-from ..auth import verify_password, get_password_hash, create_access_token, get_current_active_user
+from ..schemas import UserLogin, UserRegister, Token, UserOut, PasswordSetupRequest
+from ..auth import verify_password, get_password_hash, create_access_token, get_current_active_user, verify_token
 from ..utils.email import send_email_async
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@router.post("/register", response_model=UserOut, status_code=201)
+@router.post("/register", status_code=201)
 async def register_user(
     data: UserRegister,
     session: AsyncSession = Depends(get_session)
 ):
-    """Register a new user and send a welcome email"""
+    """Register a new user and send a wait-for-approval email"""
     try:
         # Check if email already exists
         existing_user = await session.scalar(
@@ -29,37 +29,37 @@ async def register_user(
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        # Hash the password
-        hashed_password = get_password_hash(data.password)
-
-        # Create user data without password
+        # Create user (inactive, no role, no password)
         user_data = data.dict()
-        user_data.pop("password")
-        user_data["password_hash"] = hashed_password
-
-        new_user = User(**user_data)
+        new_user = User(
+            email=user_data["email"],
+            first_name=user_data["first_name"],
+            last_name=user_data["last_name"],
+            phone=user_data.get("phone"),
+            is_active=False,
+            role=None,
+            password_hash=None
+        )
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
 
-        # Send welcome email (do not block registration if email fails)
+        # Send wait-for-approval email
         try:
-            subject = "Welcome to CommunityPro Portal!"
+            subject = "Registration Received - Awaiting Approval"
             body = f"""
 Hi {new_user.first_name},
 
-Welcome to the CommunityPro Portal! Your account has been created successfully.
-
-We will be in touch soon.
+Your registration was successful! Please wait for approval by an administrator. You will receive an email with instructions to set your password once approved.
 
 Best regards,
 CommunityPro Team
 """
             await send_email_async(new_user.email, subject, body)
         except Exception as e:
-            print(f"[WARN] Failed to send welcome email: {e}")
+            print(f"[WARN] Failed to send registration email: {e}")
 
-        return new_user
+        return {"message": "Registration successful. Please wait for approval."}
     except HTTPException:
         raise
     except Exception as e:
@@ -213,3 +213,32 @@ async def change_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to change password: {str(e)}"
         ) 
+
+@router.post("/setup-password", status_code=200)
+async def setup_password(
+    data: PasswordSetupRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """Set up password for a user after approval using a token"""
+    try:
+        payload = verify_token(data.token)
+        if not payload or payload.get("purpose") != "setup_password":
+            raise HTTPException(status_code=400, detail="Invalid or expired token")
+        user_id = payload.get("sub")
+        user = await session.get(User, user_id)
+        if not user or user.password_reset_token != data.token:
+            raise HTTPException(status_code=400, detail="Invalid or expired token")
+        if user.password_reset_expires and user.password_reset_expires < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Token expired")
+        # Set password and activate user
+        user.password_hash = get_password_hash(data.password)
+        user.is_active = True
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        await session.commit()
+        return {"message": "Password set successfully. You can now log in."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to set password: {str(e)}") 
