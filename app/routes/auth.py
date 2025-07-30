@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone
 from uuid import UUID
+from fastapi.responses import JSONResponse
 
 from ..database import get_session
 from ..models import User
@@ -109,7 +110,10 @@ async def login(
             data={"sub": str(user.id), "email": user.email, "role": user.role.value}
         )
         
-        return {"access_token": access_token, "token_type": "bearer"}
+        # send access_token in response headers and content in response body
+        response = JSONResponse(content={"sub": str(user.id), "email": user.email, "role": user.role.value})
+        response.headers["Authorization"] = f"Bearer {access_token}"
+        return response
     except HTTPException:
         raise
     except Exception as e:
