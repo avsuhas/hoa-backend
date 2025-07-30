@@ -405,12 +405,12 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=True)  # nullable until password is set
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     phone = Column(String(20), nullable=True)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.resident)
-    is_active = Column(Boolean, default=True)
+    role = Column(Enum(UserRole), nullable=True, default=None)  # Not set at registration
+    is_active = Column(Boolean, default=False)  # Not active until approved
     email_verified = Column(Boolean, default=False)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     password_reset_token = Column(String(255), nullable=True)

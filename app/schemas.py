@@ -659,15 +659,19 @@ class UserLogin(BaseModel):
     password: str
 
 class UserRegister(BaseModel):
+    first_name: str
+    last_name: str
     email: EmailStr
-    password: str
-    first_name: str = Field(..., max_length=50)
-    last_name: str = Field(..., max_length=50)
-    phone: Optional[str] = Field(None, max_length=20)
-    role: Optional[UserRole] = UserRole.resident
+    phone: Optional[str] = None
+    # No role field
 
-    class Config:
-        from_attributes = True
+class UserApproval(BaseModel):
+    user_id: str
+    role: str  # Must be one of 'board_member', 'community_admin', 'property_manager'
+
+class PasswordSetupRequest(BaseModel):
+    token: str
+    password: str
 
 # User Schemas
 class UserCreate(BaseModel):
